@@ -1,22 +1,15 @@
 #Importing System Modules
-import shutil, os, traceback, sys, time, zipfile, datetime
+import shutil, os, traceback, sys, time, datetime
 import csv
 import arcpy
 env = arcpy.env
 
 #File Paths
-##topPath = r"D:\GDELT"
-##csvPath = os.path.join(topPath, "CSVFiles")
-##finalFC = arcpy.GetParameterAsText(0)
-##spatialRef = arcpy.Describe(finalFC).spatialReference
-##csvPath = arcpy.GetParameterAsText(1)
-##finalGDB = arcpy.GetParameterAsText(2)
-logPath = r''
-
-finalFC = r''
+finalFC = arcpy.GetParameterAsText(0)
 spatialRef = arcpy.Describe(finalFC).spatialReference
-csvPath = r'D:\GDELT\CSVFiles'
-finalGDB = r'D:\GDELT\GDELT_Error.gdb'
+csvPath = arcpy.GetParameterAsText(1)
+finalGDB = arcpy.GetParameterAsText(2)
+logPath = arcpy.GetParameterAsText(3)
 
 # Helper Functions
 def exitScript():
@@ -60,15 +53,12 @@ if __name__ == '__main__':
             has_m = "DISABLED"
             has_z = "DISABLED"
             ws = finalGDB
-    ##        template = finalPath
-    ##        tempFC = os.path.join(ws, out_Name)
-    ##        TempWS = "in_memory"
 
             env.overwriteOutput = 1
             if not arcpy.Exists(finalFC):
                 arcpy.CreateFeatureclass_management(ws, out_Name, geometry_type, template, has_m, has_z, spatialRef)
-    ##        TempFCs.append(tempFC)
-    ##
+
+    
             fieldsToUpdate = ("SHAPE@", "GLOBALEVENTID", "SQLDATE", "MonthYear", "Year", "FractionDate", "Actor1Code", "Actor1Name", "Actor1CountryCode", "Actor1KnownGroupCode", "Actor1EthnicCode", "Actor1Religion1Code", "Actor1Religion2Code",
                 "Actor1Type1Code", "Actor1Type2Code", "Actor1Type3Code", "Actor2Code", "Actor2Name", "Actor2CountryCode", "Actor2KnownGroupCode", "Actor2EthnicCode", "Actor2Religion1Code", "Actor2Religion2Code", "Actor2Type1Code", "Actor2Type2Code",
                 "Actor2Type3Code", "IsRootEvent", "EventCode", "EventBaseCode", "EventRootCode", "QuadClass", "GoldsteinScale", "NumMentions", "NumSources", "NumArticles", "AvgTone", "Actor1Geo_Type", "Actor1Geo_FullName", "Actor1Geo_CountryCode",
@@ -76,8 +66,6 @@ if __name__ == '__main__':
                 "ActionGeo_Type", "ActionGeo_FullName", "ActionGeo_CountryCode", "ActionGeo_ADM1Code", "ActionGeo_Lat", "ActionGeo_Long", "ActionGeo_FeatureID", "DATEADDED", "SOURCEURL")
             csvCount = 0
             for t in TempCSV:
-    #        while csvCount < 1:
-                ##t = TempCSV[0]
                 csvCount += 1
                 rowCount = 0
                 errorCount = 0
@@ -95,13 +83,12 @@ if __name__ == '__main__':
                 with open(t, 'rb') as f:
                     csvreader = csv.reader(f, delimiter='\t', quotechar='|')
                     for row in csvreader:
+                        arcpy.AddMessage("Completed " + str(rowCount) + " rows...")
                         iRow = []
                         rowCount += 1
 
                         features = []
                         array = arcpy.Array()
-
-##                        print row
 
                         if row[39] != '':
                             if row[40] != '':
@@ -122,43 +109,27 @@ if __name__ == '__main__':
                             ptGeo = arcpy.Multipoint(array)
                             validPointCount += 1
 
-                        i = -1
-                        for field in fieldsToUpdate:
-##                            print field
-                            if i < 0:
-                                iRow.append(ptGeo)
-##                                print ptGeo
-                                i+=1
-                            else:
-                                iRow.append(row[i])
-##                                print row[i]
-                                i+=1
-
-                        print iRow, len(iRow)
+                            i = -1
+                            for field in fieldsToUpdate:
+                                if i < 0:
+                                    iRow.append(ptGeo)
+                                    i+=1
+                                else:
+                                    iRow.append(row[i])
+                                    i+=1
 
                         try:
                             cursor.insertRow(iRow)
 
                         except:
-                            print("Error on " + str(iRow[0]) + " skipping")
-                            arcpy.AddMessage("Error on " + str(iRow[0]) + " skipping")
-                            F.write("Error on " + str(iRow[0]) + " skipping")
-
-                            tb = sys.exc_info()[2]
-                            tbinfo = traceback.format_tb(tb)[0]
-                            pymsg  = "PYTHON ERRORS:\n Traceback info:\n" + tbinfo + "Error info:\n" + str(sys.exc_info()[1])
-                            msg = "\nArcPy ERRORS:\n" + arcpy.GetMessages(2) + "\n"
-                            arcpy.AddError(pymsg)
-                            arcpy.AddError(msg)
-                            print pymsg
-                            print msg
-                            F.write(pymsg)
-                            F.write(msg)
-
+                            print("Error on " + str(rowCount) + " skipping")
+                            arcpy.AddMessage("Error on " + str(rowCount) + " skipping")
                             errorCount += 1
+                            F.write("Error on " + str(rowCount) + " skipping")
+
+
 
                 dataPct = ((float(validPointCount) / float(rowCount)) * 100)
-    ##            print("    Processed %d rows and %d valid points with a valid geometry rate of %f." % (rowCount, validPointCount, float("{0.2f}".format(dataPct))))
 
                 endTime = time.time()
                 print("    Finished at " + time.ctime(endTime))
@@ -182,6 +153,7 @@ if __name__ == '__main__':
 
             F.write("Entire process took %d seconds" % int(processDuration))
             F.write("There were a total of %s errors" % str(errorCount))
+            F.close()
 
         except:
             exitScript()
